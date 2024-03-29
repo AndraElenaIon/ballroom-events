@@ -3,27 +3,22 @@ import streamlit as st
 import os
 import pandas as pd
 import json
-from io import BytesIO
 
-# Titlul aplicației
+
+
 st.title('Ballroom Events')
 
-# Crearea taburilor
 tab1, tab2 = st.tabs(["XML", "JSON"])
 
-# Tabul pentru XML
 with tab1:
-    st.header("Încărcare și afișare fișier XML")
+    st.header("Load XML & see report")
 
-    uploaded_file_xml = st.file_uploader("Alege un fișier XML", type=['xml'], key='xml')
+    uploaded_file_xml = st.file_uploader("Choose XML file", type=['xml'], key='xml')
 
     if uploaded_file_xml is not None:
-        # Procesează și afișează XML
-        st.subheader("Conținutul XML transformă:")
-
         try:
             xml_root = etree.parse(uploaded_file_xml)
-            # Presupunem că fișierul XSL este în același director cu scriptul
+
             xsl_path = os.path.join(os.path.dirname(__file__), 'event_management.xsl')
             xsl_root = etree.parse(xsl_path)
             transform = etree.XSLT(xsl_root)
@@ -33,21 +28,19 @@ with tab1:
             st.error(f"Eroare la transformarea XML: {e}")
 
 with tab2:
-    st.header("Încărcare și afișare fișier JSON")
+    st.header("Load JSON & see report")
 
     uploaded_file_json = st.file_uploader("Alege un fișier JSON", type=['json'], key='json2')
 
     if uploaded_file_json is not None:
-        # Parsarea conținutului JSON
+
         json_content = json.load(uploaded_file_json)
 
-        # Extragerea listei de evenimente din JSON
         events = json_content.get("event_management", {}).get("event", [])
 
-        # Crearea unei liste pentru a stoca datele procesate
         data_for_table = []
         for event in events:
-            # Extragerea detaliilor fiecărui eveniment
+
             organizer = event.get("details", {}).get("organizer", {})
             client = event.get("details", {}).get("client", {})
             suppliers_list = event.get("suppliers", {}).get("supplier", [])
@@ -70,6 +63,7 @@ with tab2:
             }
             data_for_table.append(row)
 
-        # Convertirea listei de date într-un DataFrame pentru afișare
         df = pd.DataFrame(data_for_table)
-        st.table(df)
+
+
+        st.dataframe(df, width=2000)
