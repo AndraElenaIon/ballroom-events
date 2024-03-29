@@ -1,42 +1,75 @@
 from lxml import etree
 import streamlit as st
 import os
+import pandas as pd
+import json
 from io import BytesIO
 
-def get_xsl_path(xml_content):
-    try:
-        xml_root = etree.parse(BytesIO(xml_content))
-        # Căutăm instrucțiunea de procesare pentru XSL
-        for pi in xml_root.xpath("//processing-instruction('xml-stylesheet')"):
-            pi_text = str(pi)
-            if "href" in pi_text:
-                start = pi_text.find('href="') + len('href="')
-                end = pi_text.find('"', start)
-                return pi_text[start:end]
-    except Exception as e:
-        st.error(f"Eroare la parsarea XML: {e}")
-    return None
+# Titlul aplicației
+st.title('Ballroom Events')
 
-st.title('Ballroom events')
+# Crearea taburilor
+tab1, tab2 = st.tabs(["XML", "JSON"])
 
-uploaded_file_xml = st.file_uploader("Alege un fișier XML", type=['xml'])
+# Tabul pentru XML
+with tab1:
+    st.header("Încărcare și afișare fișier XML")
 
-def transform_xml(xml_content, xsl_path):
-    try:
-        xml_root = etree.parse(BytesIO(xml_content))
-        with open(xsl_path, 'rb') as xsl_file:
-            xsl_root = etree.parse(xsl_file)
+    uploaded_file_xml = st.file_uploader("Alege un fișier XML", type=['xml'], key='xml')
+
+    if uploaded_file_xml is not None:
+        # Procesează și afișează XML
+        st.subheader("Conținutul XML transformă:")
+
+        try:
+            xml_root = etree.parse(uploaded_file_xml)
+            # Presupunem că fișierul XSL este în același director cu scriptul
+            xsl_path = os.path.join(os.path.dirname(__file__), 'event_management.xsl')
+            xsl_root = etree.parse(xsl_path)
             transform = etree.XSLT(xsl_root)
             result_tree = transform(xml_root)
-            return str(result_tree)
-    except Exception as e:
-        return f"Eroare la transformarea XSLT: {e}"
+            st.markdown(str(result_tree), unsafe_allow_html=True)
+        except Exception as e:
+            st.error(f"Eroare la transformarea XML: {e}")
 
-if uploaded_file_xml is not None:
-    xsl_path = get_xsl_path(uploaded_file_xml.getvalue())
-    if xsl_path:
-        xsl_full_path = os.path.join(os.path.dirname(__file__), xsl_path)
-        transformed_content = transform_xml(uploaded_file_xml.getvalue(), xsl_full_path)
-        st.markdown(transformed_content, unsafe_allow_html=True)
-    else:
-        st.error("Nu s-a putut găsi referința XSL în fișierul XML.")
+with tab2:
+    st.header("Încărcare și afișare fișier JSON")
+
+    uploaded_file_json = st.file_uploader("Alege un fișier JSON", type=['json'], key='json2')
+
+    if uploaded_file_json is not None:
+        # Parsarea conținutului JSON
+        json_content = json.load(uploaded_file_json)
+
+        # Extragerea listei de evenimente din JSON
+        events = json_content.get("event_management", {}).get("event", [])
+
+        # Crearea unei liste pentru a stoca datele procesate
+        data_for_table = []
+        for event in events:
+            # Extragerea detaliilor fiecărui eveniment
+            organizer = event.get("details", {}).get("organizer", {})
+            client = event.get("details", {}).get("client", {})
+            suppliers_list = event.get("suppliers", {}).get("supplier", [])
+            suppliers_names = ', '.join([supplier.get("name", "") for supplier in suppliers_list])
+
+            row = {
+                "ID": event.get("id", ""),
+                "Date": event.get("date", ""),
+                "Start Time": event.get("time", {}).get("start_time", ""),
+                "Duration": event.get("time", {}).get("duration", ""),
+                "Participants": event.get("details", {}).get("participant_number", ""),
+                "Arrangement": event.get("details", {}).get("arrangement", ""),
+                "Organizer Name": organizer.get("name", ""),
+                "Organizer Email": organizer.get("email", ""),
+                "Client Name": client.get("name", ""),
+                "Client Email": client.get("email", ""),
+                "Hall": event.get("location", {}).get("hall", ""),
+                "Max Capacity": event.get("location", {}).get("max_capacity", ""),
+                "Suppliers": suppliers_names
+            }
+            data_for_table.append(row)
+
+        # Convertirea listei de date într-un DataFrame pentru afișare
+        df = pd.DataFrame(data_for_table)
+        st.table(df)
