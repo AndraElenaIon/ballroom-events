@@ -56,7 +56,7 @@ with tab1:
                     "Suppliers": ", ".join(suppliers)
                 })
             # Aplicarea transformării XSLT pentru afișarea întregului document XML
-            xsl_path = os.path.join(os.path.dirname(__file__), 'event_management.xsl')
+            xsl_path = os.path.join(os.path.dirname(__file__), 'ProiectIonElenaAndra.xsl')
             xsl_tree = etree.parse(xsl_path)
             transform = etree.XSLT(xsl_tree)
             result_tree = transform(xml_tree)
